@@ -1,58 +1,57 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import YandexMapLoader from "./YandexMapLoader";
 
 function InteractiveMap({ currentLocation, onPointSelected }) {
   const mapContainerRef = useRef(null); // Контейнер для карты
   const mapInstanceRef = useRef(null); // Экземпляр карты
   const routeRef = useRef(null); // Экземпляр маршрута
+  const [isMapReady, setIsMapReady] = useState(false); // Индикатор готовности карты
 
-  useEffect(() => {
-    if (!window.ymaps) {
-      console.error("Yandex.Maps API не загружен");
+  // Функция для инициализации карты
+  const initializeMap = () => {
+    if (!window.ymaps || mapInstanceRef.current) {
       return;
     }
 
-    // Инициализация карты
-    if (!mapInstanceRef.current) {
-      window.ymaps.ready(() => {
-        const map = new window.ymaps.Map(mapContainerRef.current, {
-          center: currentLocation,
-          zoom: 10,
-          controls: ["zoomControl", "typeSelector"], // Добавляем контролы
-        });
-
-        const currentPlacemark = new window.ymaps.Placemark(
-          currentLocation,
-          { hintContent: "Ваше местоположение" },
-          { preset: "islands#blueDotIcon" }
-        );
-
-        map.geoObjects.add(currentPlacemark);
-
-        // Добавляем слой пробок
-        const trafficLayer = new window.ymaps.traffic.provider.Actual({}, { infoLayerShown: true });
-        const trafficControl = new window.ymaps.control.TrafficControl({ state: { providerKey: "traffic#actual" } });
-        map.controls.add(trafficControl);
-        trafficLayer.setMap(map);
-
-        // Событие выбора точки
-        map.events.add("click", (e) => {
-          const coords = e.get("coords");
-
-          // Уведомляем родительский компонент
-          if (onPointSelected) {
-            onPointSelected(coords);
-          }
-
-          // Построение маршрута
-          buildRoute(map, currentLocation, coords);
-        });
-
-        mapInstanceRef.current = map; // Сохраняем экземпляр карты
+    window.ymaps.ready(() => {
+      const map = new window.ymaps.Map(mapContainerRef.current, {
+        center: currentLocation,
+        zoom: 10,
+        controls: ["zoomControl", "typeSelector"],
       });
-    }
-  }, [currentLocation, onPointSelected]);
 
+      const currentPlacemark = new window.ymaps.Placemark(
+        currentLocation,
+        { hintContent: "Ваше местоположение" },
+        { preset: "islands#blueDotIcon" }
+      );
+
+      map.geoObjects.add(currentPlacemark);
+
+      // Добавляем слой пробок
+      const trafficLayer = new window.ymaps.traffic.provider.Actual({}, { infoLayerShown: true });
+      const trafficControl = new window.ymaps.control.TrafficControl({ state: { providerKey: "traffic#actual" } });
+      map.controls.add(trafficControl);
+      trafficLayer.setMap(map);
+
+      // Событие выбора точки
+      map.events.add("click", (e) => {
+        const coords = e.get("coords");
+
+        if (onPointSelected) {
+          onPointSelected(coords);
+        }
+
+        // Построение маршрута
+        buildRoute(map, currentLocation, coords);
+      });
+
+      mapInstanceRef.current = map; // Сохраняем экземпляр карты
+      setIsMapReady(true); // Устанавливаем флаг, что карта готова
+    });
+  };
+
+  // Функция для построения маршрута
   const buildRoute = (map, startPoint, endPoint) => {
     // Если уже есть маршрут, удаляем его
     if (routeRef.current) {
@@ -81,7 +80,8 @@ function InteractiveMap({ currentLocation, onPointSelected }) {
 
   return (
     <div>
-      <YandexMapLoader />
+      {/* Загружаем API и инициализируем карту, когда API загружено */}
+      <YandexMapLoader onLoad={initializeMap} />
       <div
         ref={mapContainerRef} // Привязываем контейнер карты
         style={{

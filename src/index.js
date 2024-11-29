@@ -1,11 +1,10 @@
 import React from "react";
-import ReactDOM from "react-dom";
-import "./index.css";
+import ReactDOM from "react-dom/client";  // Обновленный импорт
 import App from "./App";
+import "./index.css";
 
-ReactDOM.render(
-  <React.StrictMode>
+// Используем createRoot для рендеринга
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(
     <App />
-  </React.StrictMode>,
-  document.getElementById("root")
 );
