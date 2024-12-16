@@ -14,3 +14,93 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+/* Анимация для появления иконок */
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Дождь: Капли падают */
+@keyframes rainAnimation {
+  0% {
+    transform: translateY(-100px);
+    opacity: 0.5;
+  }
+  100% {
+    transform: translateY(100px);
+    opacity: 0.8;
+  }
+}
+
+.rain-drop {
+  position: absolute;
+  width: 3px;
+  height: 10px;
+  background-color: #00bfff;
+  border-radius: 50%;
+  animation: rainAnimation 0.5s infinite linear;
+  z-index: 1; /* капли дождя находятся ниже иконки */
+}
+
+/* Облака: Плывущие облака */
+@keyframes cloudAnimation {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.cloud {
+  position: absolute;
+  width: 150px; /* Уменьшаем размер облаков */
+  height: 80px;
+  background-color: #f1f1f1;
+  border-radius: 50%;
+  animation: cloudAnimation 30s infinite linear;
+  z-index: 1; /* облака ниже иконки */
+}
+
+/* Солнечные лучи */
+@keyframes sunbeams {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.sunbeams {
+  position: absolute;
+  top: 30%;
+  left: 50%;
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.7), rgba(255, 255, 0, 0));
+  border-radius: 50%;
+  animation: sunbeams 2s ease-out infinite;
+  z-index: 1; /* солнечные лучи ниже иконки */
+}
+
+/* Общие стили для иконок погоды */
+.weather-icon {
+  animation: fadeIn 1s ease-in-out;
+  position: relative;
+  z-index: 3; /* Иконка погоды всегда поверх анимаций */
+  font-size: 48px; /* Уменьшаем размер иконки */
+}
+
+/* Для текста и других элементов */
+.weather-info {
+  z-index: 2; /* Устанавливаем текст выше фона, но ниже иконки */
+}

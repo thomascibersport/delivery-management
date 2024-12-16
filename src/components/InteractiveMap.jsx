@@ -4,13 +4,11 @@ import YandexMapLoader from "./YandexMapLoader";
 function InteractiveMap({ currentLocation, onPointSelected }) {
   const mapContainerRef = useRef(null); // Контейнер для карты
   const mapInstanceRef = useRef(null); // Экземпляр карты
-  const routeRef = useRef(null); // Экземпляр маршрута
-  const [isMapReady, setIsMapReady] = useState(false); // Индикатор готовности карты
+  const routeRef = useRef(null); // Ссылка на маршрут
 
-  // Функция для инициализации карты
   const initializeMap = () => {
     if (!window.ymaps || mapInstanceRef.current) {
-      return;
+      return; // Карта уже инициализирована
     }
 
     window.ymaps.ready(() => {
@@ -22,74 +20,57 @@ function InteractiveMap({ currentLocation, onPointSelected }) {
 
       const currentPlacemark = new window.ymaps.Placemark(
         currentLocation,
-        { hintContent: "Ваше местоположение" },
+        {
+          hintContent: "Ваше местоположение",
+          balloonContent: "Вы находитесь здесь",
+        },
         { preset: "islands#blueDotIcon" }
       );
 
       map.geoObjects.add(currentPlacemark);
 
-      // Добавляем слой пробок
-      const trafficLayer = new window.ymaps.traffic.provider.Actual({}, { infoLayerShown: true });
-      const trafficControl = new window.ymaps.control.TrafficControl({ state: { providerKey: "traffic#actual" } });
-      map.controls.add(trafficControl);
-      trafficLayer.setMap(map);
-
-      // Событие выбора точки
+      // Обработка кликов на карте
       map.events.add("click", (e) => {
         const coords = e.get("coords");
-
-        if (onPointSelected) {
-          onPointSelected(coords);
+        if (coords && Array.isArray(coords)) {
+          onPointSelected(coords); // Уведомляем родительский компонент
+          buildRoute(map, currentLocation, coords); // Построение маршрута
         }
-
-        // Построение маршрута
-        buildRoute(map, currentLocation, coords);
       });
 
-      mapInstanceRef.current = map; // Сохраняем экземпляр карты
-      setIsMapReady(true); // Устанавливаем флаг, что карта готова
+      mapInstanceRef.current = map;
     });
   };
 
-  // Функция для построения маршрута
   const buildRoute = (map, startPoint, endPoint) => {
-    // Если уже есть маршрут, удаляем его
     if (routeRef.current) {
-      map.geoObjects.remove(routeRef.current);
+      map.geoObjects.remove(routeRef.current); // Удаляем предыдущий маршрут
     }
 
-    // Создаем новый маршрут
     const multiRoute = new window.ymaps.multiRouter.MultiRoute(
       {
         referencePoints: [startPoint, endPoint],
-        params: {
-          results: 1, // Один оптимальный маршрут
-          avoidTrafficJams: true, // Учитывать пробки
-        },
+        params: { results: 1 },
       },
       {
-        boundsAutoApply: true, // Автоматическое изменение масштаба карты
-        wayPointStartIconColor: "blue",
-        wayPointFinishIconColor: "red",
+        boundsAutoApply: true,
       }
     );
 
     map.geoObjects.add(multiRoute); // Добавляем маршрут на карту
-    routeRef.current = multiRoute; // Сохраняем маршрут для будущего удаления
+    routeRef.current = multiRoute; // Сохраняем ссылку на маршрут
   };
+
+  useEffect(() => {
+    if (!mapInstanceRef.current) {
+      initializeMap(); // Инициализируем карту только один раз
+    }
+  }, [currentLocation]);
 
   return (
     <div>
-      {/* Загружаем API и инициализируем карту, когда API загружено */}
       <YandexMapLoader onLoad={initializeMap} />
-      <div
-        ref={mapContainerRef} // Привязываем контейнер карты
-        style={{
-          width: "100%",
-          height: "400px",
-          borderRadius: "8px",
-        }}
-      ></div>
+      <div ref={mapContainerRef} style={{ width: "100%", height: "400px" }} />
     </div>
   );
 }
