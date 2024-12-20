@@ -1,15 +1,14 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import YandexMapLoader from "./YandexMapLoader";
 
-function InteractiveMap({ currentLocation, onPointSelected }) {
-  const mapContainerRef = useRef(null); // Контейнер для карты
-  const mapInstanceRef = useRef(null); // Экземпляр карты
-  const routeRef = useRef(null); // Ссылка на маршрут
+function InteractiveMap({ currentLocation, onPointSelected, onRouteDetails }) {
+  const mapContainerRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+  const pointsRef = useRef([]);
+  const routeRef = useRef(null);
 
   const initializeMap = () => {
-    if (!window.ymaps || mapInstanceRef.current) {
-      return; // Карта уже инициализирована
-    }
+    if (!window.ymaps || mapInstanceRef.current) return;
 
     window.ymaps.ready(() => {
       const map = new window.ymaps.Map(mapContainerRef.current, {
@@ -18,52 +17,77 @@ function InteractiveMap({ currentLocation, onPointSelected }) {
         controls: ["zoomControl", "typeSelector"],
       });
 
-      const currentPlacemark = new window.ymaps.Placemark(
-        currentLocation,
-        {
-          hintContent: "Ваше местоположение",
-          balloonContent: "Вы находитесь здесь",
-        },
-        { preset: "islands#blueDotIcon" }
-      );
-
-      map.geoObjects.add(currentPlacemark);
-
-      // Обработка кликов на карте
       map.events.add("click", (e) => {
         const coords = e.get("coords");
         if (coords && Array.isArray(coords)) {
-          onPointSelected(coords); // Уведомляем родительский компонент
-          buildRoute(map, currentLocation, coords); // Построение маршрута
+          console.log("Выбранные координаты:", coords);
+          onPointSelected(coords);
+          addPoint(map, coords);
+          buildRoute(map, currentLocation, coords);
         }
       });
 
-      mapInstanceRef.current = map;
+      mapInstanceRef.current = map; // Сохраняем экземпляр карты
     });
   };
 
+  const addPoint = (map, coords) => {
+    pointsRef.current.forEach((point) => {
+      map.geoObjects.remove(point);
+    });
+    pointsRef.current = [];
+
+    const placemark = new window.ymaps.Placemark(
+      coords,
+      { hintContent: "Выбранная точка", balloonContent: "Точка маршрута" },
+      { preset: "islands#redIcon" }
+    );
+
+    map.geoObjects.add(placemark);
+    pointsRef.current.push(placemark);
+  };
+
   const buildRoute = (map, startPoint, endPoint) => {
+    if (!window.ymaps || !window.ymaps.multiRouter) {
+      console.error("Yandex Maps API не загружен или MultiRouter недоступен");
+      return;
+    }
+
     if (routeRef.current) {
       map.geoObjects.remove(routeRef.current); // Удаляем предыдущий маршрут
     }
 
-    const multiRoute = new window.ymaps.multiRouter.MultiRoute(
-      {
-        referencePoints: [startPoint, endPoint],
-        params: { results: 1 },
-      },
-      {
-        boundsAutoApply: true,
-      }
-    );
+    try {
+      const multiRoute = new window.ymaps.multiRouter.MultiRoute(
+        {
+          referencePoints: [startPoint, endPoint],
+          params: { avoidTrafficJams: true },
+        },
+        { boundsAutoApply: true }
+      );
 
-    map.geoObjects.add(multiRoute); // Добавляем маршрут на карту
-    routeRef.current = multiRoute; // Сохраняем ссылку на маршрут
+      // Удаляем обработчики перед добавлением новых
+      multiRoute.model.events.group().removeAll();
+
+      multiRoute.model.events.add("requestsuccess", () => {
+        const activeRoute = multiRoute.getActiveRoute();
+        if (activeRoute) {
+          const distance = activeRoute.properties.get("distance").text;
+          const duration = activeRoute.properties.get("duration").text;
+          onRouteDetails({ distance, duration });
+        }
+      });
+
+      map.geoObjects.add(multiRoute);
+      routeRef.current = multiRoute; // Сохраняем маршрут
+    } catch (error) {
+      console.error("Ошибка при построении маршрута:", error);
+    }
   };
 
   useEffect(() => {
     if (!mapInstanceRef.current) {
-      initializeMap(); // Инициализируем карту только один раз
+      initializeMap();
     }
   }, [currentLocation]);
 

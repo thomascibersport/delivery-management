@@ -1,9 +1,11 @@
 import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSun, faCloud, faCloudRain, faSnowflake, faBolt, faSmog } from "@fortawesome/free-solid-svg-icons";
-import "animate.css";
+import "../WeatherAnimation.css";
 
 function WeatherAnimation({ weatherId }) {
+  console.log("Полученный weatherId:", weatherId); // Лог для отладки
+
   const getWeatherIcon = () => {
     if (weatherId === 800) return faSun; // Ясно
     if (weatherId >= 801 && weatherId <= 804) return faCloud; // Облачно
